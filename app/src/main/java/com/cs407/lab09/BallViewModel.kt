@@ -14,7 +14,9 @@ class BallViewModel : ViewModel() {
     private var ball: Ball? = null
     private var lastTimestamp: Long = 0L
 
-    // Expose the ball's position as a StateFlow
+    // scales m/s^2 from the gravity sensor into pixels/s^2
+    private val ACCEL_SCALE = 80f
+
     private val _ballPosition = MutableStateFlow(Offset.Zero)
     val ballPosition: StateFlow<Offset> = _ballPosition.asStateFlow()
 
@@ -30,7 +32,6 @@ class BallViewModel : ViewModel() {
             ).also { b ->
                 _ballPosition.value = Offset(b.posX, b.posY)
             }
-            // Start fresh timing
             lastTimestamp = 0L
         }
     }
@@ -50,38 +51,29 @@ class BallViewModel : ViewModel() {
                 val rawX = event.values[0]
                 val rawY = event.values[1]
 
-                // Hint from starter: the sensor's x and y-axis are inverted
-                val xAcc = -rawX
-                val yAcc = -rawY
+                // X stays inverted, Y is NOT inverted so positive rawY => down on screen
+                val xAcc = -rawX * ACCEL_SCALE
+                val yAcc =  rawY * ACCEL_SCALE
 
-                // Update the ball's physics state
                 currentBall.updatePositionAndVelocity(
                     xAcc = xAcc,
                     yAcc = yAcc,
                     dT = dT
                 )
 
-                // Notify the UI
                 _ballPosition.update {
                     Offset(currentBall.posX, currentBall.posY)
                 }
             }
-
-            // Store timestamp for next delta calculation
             lastTimestamp = event.timestamp
         }
     }
 
     fun reset() {
-        // Reset the ball's physics state
         ball?.reset()
-
-        // Update the StateFlow with the reset position
         ball?.let { b ->
             _ballPosition.value = Offset(b.posX, b.posY)
         }
-
-        // Reset timing so the next event will be treated as the first
         lastTimestamp = 0L
     }
 }
